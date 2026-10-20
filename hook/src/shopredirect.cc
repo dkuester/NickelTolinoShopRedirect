@@ -62,7 +62,10 @@
 #include <QSettings>
 #include <QString>
 #include <QUrl>
-#include <QUrlQuery>
+
+#include "shopredirect_logic.h"
+
+using shopredirect::Config;
 
 typedef void Device;
 typedef void TolinoServiceSettings;
@@ -140,23 +143,6 @@ static void log_line(const QString &msg)
     }
 }
 
-struct Config {
-    bool enabled = false;
-    QString start_url;
-    QString search_url;
-};
-
-// Only absolute https URLs with a host are accepted; anything else disables
-// that URL (the original reseller URL is used).
-static QString valid_url(const QString &s)
-{
-    const QUrl u(s.trimmed(), QUrl::StrictMode);
-    if (!u.isValid() || u.scheme() != QLatin1String("https") || u.host().isEmpty()) {
-        return QString();
-    }
-    return s.trimmed();
-}
-
 static void write_default_config()
 {
     QDir().mkpath(QString::fromLatin1(kDataDir));
@@ -170,21 +156,10 @@ static void write_default_config()
 // Read on every use so edits over USB apply without a restart.
 static Config read_config()
 {
-    Config c;
-    if (!QFileInfo::exists(QString::fromLatin1(kConfigFile))) {
-        return c;
-    }
-    QSettings s(QString::fromLatin1(kConfigFile), QSettings::IniFormat);
-    c.enabled    = s.value(QStringLiteral("shop/enabled"), false).toBool();
-    c.start_url  = valid_url(s.value(QStringLiteral("shop/start_url")).toString());
-    c.search_url = valid_url(s.value(QStringLiteral("shop/search_url")).toString());
-    return c;
+    return shopredirect::read_config(QString::fromLatin1(kConfigFile));
 }
 
-static QString host_of(const QString &url)
-{
-    return QUrl(url).host().toLower();
-}
+using shopredirect::host_of;
 
 static bool caller_allowed(void *ret, const char *const *callers)
 {
@@ -200,8 +175,8 @@ static bool caller_allowed(void *ret, const char *const *callers)
     return false;
 }
 
-// The reseller's own domain: last two labels of the base URL's host
-// (ereader.thalia.de -> thalia.de). Empty if it cannot be determined.
+// The reseller's own domain (ereader.thalia.de -> thalia.de), from the base
+// URL that receives the access token. Empty if it cannot be determined.
 static QString reseller_domain()
 {
     if (!TolinoServiceSettings__sharedInstance || !TolinoServiceSettings__getResellerShopBaseUrl) {
@@ -211,37 +186,12 @@ static QString reseller_domain()
     if (!settings) {
         return QString();
     }
-    const QStringList labels = host_of(TolinoServiceSettings__getResellerShopBaseUrl(settings))
-                                   .split(QLatin1Char('.'), Qt::SkipEmptyParts);
-    if (labels.size() < 2) {
-        return QString();
-    }
-    return labels.mid(labels.size() - 2).join(QLatin1Char('.'));
+    return shopredirect::domain_of(host_of(TolinoServiceSettings__getResellerShopBaseUrl(settings)));
 }
 
-static bool is_reseller_host(const QString &host)
-{
-    const QString domain = reseller_domain();
-    return !host.isEmpty() && !domain.isEmpty()
-        && (host == domain || host.endsWith(QLatin1Char('.') + domain));
-}
-
-static bool is_redirect_host(const QString &host, const Config &c)
-{
-    return !host.isEmpty()
-        && ((!c.start_url.isEmpty() && host == host_of(c.start_url))
-            || (!c.search_url.isEmpty() && host == host_of(c.search_url)));
-}
-
-// Whether a page on this host must not get the device's access token or the
-// token-setting JS bridge. Hosts in the reseller's own domain never are, so
-// the stock behaviour of the reseller's shop is unchanged.
 static bool is_foreign_host(const QString &host)
 {
-    if (host.isEmpty() || is_reseller_host(host)) {
-        return false;
-    }
-    return g_current_shop_foreign || is_redirect_host(host, read_config());
+    return shopredirect::is_foreign_host(host, reseller_domain(), g_current_shop_foreign, read_config());
 }
 
 extern "C" __attribute__((visibility("default"))) QString
@@ -284,7 +234,7 @@ _nh_ResellerShopController__ctor(ResellerShopController *self, QString *url, boo
 {
     if (g_active) {
         const QString host = url ? host_of(*url) : QString();
-        g_current_shop_foreign = !is_reseller_host(host) && is_redirect_host(host, read_config());
+        g_current_shop_foreign = shopredirect::is_foreign_shop_view(host, reseller_domain(), read_config());
         if (g_current_shop_foreign) {
             log_line(QStringLiteral("foreign shop view: ") + *url);
         }
@@ -310,8 +260,7 @@ extern "C" __attribute__((visibility("default"))) void
 _nh_EpublishingNetworkAccessManager__handleAuthRequestCommand(EpublishingNetworkAccessManager *self, QUrl *url)
 {
     if (g_active && url) {
-        const QString target = QUrlQuery(*url).queryItemValue(QStringLiteral("targeturl"), QUrl::FullyDecoded);
-        const QString host = host_of(target);
+        const QString host = host_of(shopredirect::auth_request_target(*url));
         // A requestauth without a resolvable target is left to the firmware;
         // goToTargetUrl() is still guarded.
         if (is_foreign_host(host)) {

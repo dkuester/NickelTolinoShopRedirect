@@ -1,0 +1,28 @@
+name: CI
+
+on: [push]
+
+jobs:
+  logic-qt6:
+    # Host unit tests for hook/src/shopredirect_logic.h against Qt 6, the major
+    # version the hook is built for (Debian bookworm ships 6.4; the device has
+    # 6.5.2). Also checks every URL in examples/config.ini.
+    runs-on: codeberg-tiny
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt 6
+        run: apt-get update && apt-get install -y --no-install-recommends qt6-base-dev pkg-config make g++
+      - name: Run unit tests
+        run: make -C test check
+
+  symbols:
+    # Pure Python, no firmware download: every hook, dlsym and allowlisted
+    # caller must exist in the 5.18 libnickel symbol reference.
+    runs-on: codeberg-tiny
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check hook symbols against 5.18 libnickel
+        run: python3 test/check_symbols.py
+
+  # No cross-compile job: the Qt 6 ARM toolchain image is several GB, too heavy
+  # for Codeberg's hosted runners. Build locally (see README).

@@ -11,3 +11,7 @@ hook/nhplugin.json
 hook/libntshopredirect.so
 hook/Kobo.tgz
 hook/KoboRoot.tgz
+test/test_logic
+
+# Python bytecode
+__pycache__/

@@ -30,7 +30,7 @@ To buy, sign in to the other shop once, like on any website. The device login do
 
 ## Installation
 
-1. Download `Kobo.tgz` from a release or build it (see below).
+1. Download `Kobo.tgz` from the [releases](https://codeberg.org/hortizept/NickelTolinoShopRedirect/releases) or build it (see below).
 2. Connect the tolino over USB and copy `Kobo.tgz` to `.kobo/`.
 3. Eject. The tolino installs the plugin and restarts.
 
@@ -53,9 +53,10 @@ search_url=https://mt.shop-asp.de/de/search/tolino?q=
 - Changes apply the next time the shop opens; no restart needed.
 - `enabled=false` turns the plugin off without uninstalling it.
 
-Other resellers' shop URLs are in their public tolino config
-(`https://api.pageplace.de/v1/resellers/<id>/client-types/TOLINO_SHINE_5/config`, fields
-`URL_SHOP_EBOOK_START_PAGE` and `URL_SHOP_EBOOK_SEARCH`).
+Ready-made entries for all tolino resellers (Germany, Austria, Switzerland, Netherlands, Italy) are in
+[examples/config.ini](examples/config.ini): enable the block you want and copy the file to the tolino.
+The URLs come from the public tolino reseller config
+(`https://api.pageplace.de/v1/resellers/<id>/client-types/TOLINO_SHINE_5/config`).
 
 Log: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`
 
@@ -68,12 +69,22 @@ Create an empty file `.adds/NickelTolinoShopRedirect/uninstall` and restart the 
 ```bash
 git clone --recurse-submodules https://codeberg.org/hortizept/NickelTolinoShopRedirect.git
 cd NickelTolinoShopRedirect/hook
-docker run --rm -v "$PWD:$PWD" -w "$PWD" strayrose/nickeltc sh -c 'make && make kobo'
+docker run --rm -v "$PWD:$PWD" -w "$PWD" -e VERSION="$(git describe --tags --always --dirty)" \
+  strayrose/nickeltc-qt6 sh -c 'make && make kobo'
 ```
 
-The image must contain the Qt 6 toolchain (`/tc/arm-kobo-linux-gnueabihf`). Some `strayrose/nickeltc` tags only ship the Qt 5 toolchain (`arm-nickel-…`); the build then stops with "Could not find the supplied Qt6 cross compiler".
+The image must contain the Qt 6.5.2 toolchain (`/tc/arm-kobo-linux-gnueabihf`), e.g. built from
+NickelStorygraph's `nickeltc-qt6` Dockerfile. An image with the Qt 5 toolchain (`arm-nickel-…`) stops
+with "Could not find the supplied Qt6 cross compiler". `VERSION` is passed in because `git describe`
+does not run inside the container.
 
 The result is `hook/Kobo.tgz` (contains `imageformats/libntshopredirect.so`).
+
+## Tests
+
+- Automated (CI): unit tests of the logic and a symbol check against 5.18, see [docs/testing.md](docs/testing.md).
+  Locally: `make -C test check` and `python3 test/check_symbols.py`.
+- Manual on-device checklist: [docs/testing.md](docs/testing.md).
 
 ## Tested
 

@@ -81,7 +81,11 @@ Das Ergebnis ist `hook/Kobo.tgz` (enthält `imageformats/libntshopredirect.so`).
 ## Getestet
 
 - Statisch gegen tolino-Firmware 5.18.264769 (shine 5): alle Hook-Symbole vorhanden, ABI geprüft.
-- Auf dem Gerät: noch offen.
+- Auf dem Gerät (tolino shine 5, 5.18.264769): Shop-Knopf und Suche öffnen meineBUCHhandlung, Kauf mit
+  dem Login des Shops, Buch erscheint nach dem Sync in der Bibliothek. Thalia-Login, Sync, Skoobe,
+  Empfehlungs-Kacheln (→ Thalia) unverändert. Fremde Shop-Seiten werden ohne Access-Token geladen (Log).
+  Der Shop-Login übersteht einen Neustart.
+- Offen: „Mehr stöbern“ am Ende einer Leseprobe öffnet weiterhin den Shop des eigenen Händlers.
 
 ## Lizenz
 

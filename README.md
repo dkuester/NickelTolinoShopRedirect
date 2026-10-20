@@ -71,6 +71,8 @@ cd NickelTolinoShopRedirect/hook
 docker run --rm -v "$PWD:$PWD" -w "$PWD" strayrose/nickeltc sh -c 'make && make kobo'
 ```
 
+The image must contain the Qt 6 toolchain (`/tc/arm-kobo-linux-gnueabihf`). Some `strayrose/nickeltc` tags only ship the Qt 5 toolchain (`arm-nickel-…`); the build then stops with "Could not find the supplied Qt6 cross compiler".
+
 The result is `hook/Kobo.tgz` (contains `imageformats/libntshopredirect.so`).
 
 ## Tested

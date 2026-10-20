@@ -81,8 +81,8 @@ The result is `hook/Kobo.tgz` (contains `imageformats/libntshopredirect.so`).
 - On device (tolino shine 5, 5.18.264769): shop button and search open meineBUCHhandlung, buying with the
   shop's own login works, the book shows up in the library after a sync. Thalia login, sync, Skoobe and
   the home screen recommendations (→ Thalia) are unchanged. Foreign shop pages load without the access
-  token (log). The shop login survives a restart.
-- Open: "browse more" at the end of a preview still opens the device reseller's shop.
+  token (log). "Weitere Bücher" at the end of a preview opens meineBUCHhandlung too. The shop login
+  survives a restart.
 
 ## License
 

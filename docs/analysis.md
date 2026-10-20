@@ -125,10 +125,13 @@ Plugin registriert deshalb für Shop-Ansichten auf einem Umleitungs-Host das `Re
 
 | Hook (GOT von libnickel) | Zweck |
 |---|---|
-| `TolinoServiceSettings::getResellerShopStartUrl()` | Startseite aus `config.ini` |
-| `TolinoServiceSettings::getResellerShopSearchUrl()` | Such-URL aus `config.ini` (Nickel hängt den Suchbegriff an) |
+| `TolinoServiceSettings::getResellerShopStartUrl()` | Startseite aus `config.ini`, nur für Shop-Knopf, `goShopping` und „Mehr stöbern“ (Aufrufer per `dladdr` geprüft) |
+| `TolinoServiceSettings::getResellerShopSearchUrl()` | Such-URL aus `config.ini`, nur für `TolinoStoreSearchBuilder` |
+| `TolinoServiceSettings::getAccessToken()` | liefert leer, solange eine fremde Seite geladen wird (thread-lokal) |
 | `ResellerShopController::ResellerShopController(QString, bool, QObject*)` | erkennt Shop-Ansichten auf einem Umleitungs-Host |
-| `QWebChannel::registerObject(QString const&, QObject*)` | lässt dort `ResellerJsInterface` weg |
+| `ResellerShopController::goToTargetUrl(QString)` | lädt fremde Seiten ohne `X-Access-Token` |
+| `EpublishingNetworkAccessManager::handleAuthRequestCommand(QUrl)` | verwirft `epublishing://requestauth` mit fremder `targeturl` |
+| `QWebChannel::registerObject(QString const&, QObject*)` | lässt `ResellerJsInterface` („screenController“) bei fremden Shops weg |
 
 `getResellerShopBaseUrl()` bleibt unberührt (Token-Header, 1.3). Rückgabe-ABI geprüft: Die
 URL-Getter liefern `QString` über einen versteckten Zeiger (r0), `this` in r1. Alle Aufrufe in
@@ -137,6 +140,22 @@ libnickel laufen über die PLT, der GOT-Hook greift also überall.
 **Nur Tolino:** `init()` prüft `Device::isTolino()`. Im Kobo-Modus meldet es einen Fehler.
 NickelHook nimmt dann alle Hooks zurück und parkt das Plugin. Eine Installation zu verhindern ist
 nicht möglich, weil die Firmware `Kobo.tgz` selbst entpackt. Das Plugin bleibt dann aber wirkungslos.
+
+### 3.3 Befunde aus dem ersten Gerätetest (v1, 2026-10-20)
+
+- **Empfehlungen:** `TolinoRecommendation::retrieveShopUrl()` und `buildUrlShopRecommendation()`
+  bauen die Links der Empfehlungs-Kacheln (12 pro Sync) aus der Startseiten-URL. v1 hat sie mit
+  umgeleitet, die Links zeigten auf Thalia-Artikelpfade bei meineBUCHhandlung. Seit v2 wird nur noch
+  für die Aufrufer aus 3.2 umgeleitet.
+- **Token-Leck in v1:** `ResellerShopController::goToTargetUrl()` lädt *jede* Seite der Shop-Ansicht
+  (Startseite aus `loadView()`, Ziel von `epublishing://requestauth`) mit
+  `X-Access-Token: <Access-Token>`, **unabhängig vom Host**. v1 hat das übersehen. Damit ging das
+  Thalia-Access-Token beim Öffnen des umgeleiteten Shops und beim Klick auf „Zur Anmeldung“ an
+  `mt.shop-asp.de`. Das Refresh-Token war nicht betroffen. Seit v2 sind beide Wege gesperrt (3.2).
+- **„Zur Anmeldung“ auf der Startseite von meineBUCHhandlung:** Bei unbekannter Buchhandlung zeigt der
+  Shop für Tolino-Geräte einen Link `epublishing://requestauth?targeturl=https://<shop>/wsapi/rest/v1/authentication/byaccesstokenwithredirect?url=…`.
+  Gedacht ist eine Anmeldung per Geräte-Token. Mit dem Thalia-Token kann das nicht klappen. v2 verwirft
+  diesen Aufruf. Die Anmeldung läuft stattdessen über den normalen Login des Shops, z. B. beim Kauf.
 
 ## 4. Offene Punkte
 

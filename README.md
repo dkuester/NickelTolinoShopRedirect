@@ -71,12 +71,18 @@ cd NickelTolinoShopRedirect/hook
 docker run --rm -v "$PWD:$PWD" -w "$PWD" strayrose/nickeltc sh -c 'make && make kobo'
 ```
 
+The image must contain the Qt 6 toolchain (`/tc/arm-kobo-linux-gnueabihf`). Some `strayrose/nickeltc` tags only ship the Qt 5 toolchain (`arm-nickel-…`); the build then stops with "Could not find the supplied Qt6 cross compiler".
+
 The result is `hook/Kobo.tgz` (contains `imageformats/libntshopredirect.so`).
 
 ## Tested
 
 - Statically against tolino firmware 5.18.264769 (shine 5): all hook symbols present, ABI checked.
-- On device: pending.
+- On device (tolino shine 5, 5.18.264769): shop button and search open meineBUCHhandlung, buying with the
+  shop's own login works, the book shows up in the library after a sync. Thalia login, sync, Skoobe and
+  the home screen recommendations (→ Thalia) are unchanged. Foreign shop pages load without the access
+  token (log). "Weitere Bücher" at the end of a preview opens meineBUCHhandlung too. The shop login
+  survives a restart.
 
 ## License
 

@@ -32,7 +32,7 @@ Geräts ändert sich nicht.
 
 ## Installation
 
-1. `Kobo.tgz` aus einem Release herunterladen oder selbst bauen (siehe unten).
+1. `Kobo.tgz` aus den [Releases](https://codeberg.org/hortizept/NickelTolinoShopRedirect/releases) herunterladen oder selbst bauen (siehe unten).
 2. Den tolino per USB verbinden und `Kobo.tgz` nach `.kobo/` kopieren.
 3. Auswerfen. Der tolino installiert das Plugin und startet neu.
 
@@ -56,9 +56,10 @@ search_url=https://mt.shop-asp.de/de/search/tolino?q=
 - Änderungen wirken beim nächsten Öffnen des Shops, ein Neustart ist nicht nötig.
 - Mit `enabled=false` ist das Plugin aus, ohne es zu deinstallieren.
 
-Die Shop-URLs anderer Händler stehen in deren öffentlicher tolino-Konfiguration
-(`https://api.pageplace.de/v1/resellers/<id>/client-types/TOLINO_SHINE_5/config`, Felder
-`URL_SHOP_EBOOK_START_PAGE` und `URL_SHOP_EBOOK_SEARCH`).
+Fertige Einträge für alle tolino-Händler (Deutschland, Österreich, Schweiz, Niederlande, Italien)
+stehen in [examples/config.ini](examples/config.ini): den gewünschten Block aktivieren und die Datei auf
+den tolino kopieren. Die Adressen stammen aus der öffentlichen tolino-Händlerkonfiguration
+(`https://api.pageplace.de/v1/resellers/<id>/client-types/TOLINO_SHINE_5/config`).
 
 Log: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`
 
@@ -71,12 +72,22 @@ Eine leere Datei `.adds/NickelTolinoShopRedirect/uninstall` anlegen und den toli
 ```bash
 git clone --recurse-submodules https://codeberg.org/hortizept/NickelTolinoShopRedirect.git
 cd NickelTolinoShopRedirect/hook
-docker run --rm -v "$PWD:$PWD" -w "$PWD" strayrose/nickeltc sh -c 'make && make kobo'
+docker run --rm -v "$PWD:$PWD" -w "$PWD" -e VERSION="$(git describe --tags --always --dirty)" \
+  strayrose/nickeltc-qt6 sh -c 'make && make kobo'
 ```
 
-Das Image muss die Qt-6-Toolchain enthalten (`/tc/arm-kobo-linux-gnueabihf`). Manche `strayrose/nickeltc`-Tags bringen nur die Qt-5-Toolchain mit (`arm-nickel-…`). Der Build bricht dann mit „Could not find the supplied Qt6 cross compiler“ ab.
+Das Image muss die Qt-6.5.2-Toolchain enthalten (`/tc/arm-kobo-linux-gnueabihf`), z. B. gebaut aus
+dem `nickeltc-qt6`-Dockerfile von NickelStorygraph. Ein Image mit der Qt-5-Toolchain (`arm-nickel-…`)
+bricht mit „Could not find the supplied Qt6 cross compiler“ ab. `VERSION` wird von außen übergeben,
+weil im Container kein `git describe` läuft.
 
 Das Ergebnis ist `hook/Kobo.tgz` (enthält `imageformats/libntshopredirect.so`).
+
+## Tests
+
+- Automatisch (CI): Unit-Tests der Logik und Symbol-Check gegen 5.18, siehe [docs/testing.md](docs/testing.md).
+  Lokal: `make -C test check` und `python3 test/check_symbols.py`.
+- Manuelle Checkliste für das Gerät: [docs/testing.md](docs/testing.md).
 
 ## Getestet
 

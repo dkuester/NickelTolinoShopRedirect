@@ -26,8 +26,8 @@ Log: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`.
 | 8 | Kauf oder Leseprobe im Umleitungs-Shop, dann Sync | Buch erscheint in der Bibliothek (Konten verbunden) | – |
 | 9 | Sync, Bibliothek, Skoobe | unverändert | – |
 | 10 | Neustart | Login im Umleitungs-Shop bleibt | – |
-| 11 | `enabled=false` in `config.ini` | Shop-Knopf öffnet wieder den eigenen Händler | keine `shop start url`-Zeile |
-| 12 | Leere Datei `.adds/NickelTolinoShopRedirect/uninstall`, Neustart | Plugin entfernt, Original-Verhalten | – |
+| 11 | `enabled=false` in `config.ini`, ohne Neustart; danach wieder `enabled=true` | Shop-Knopf und Suche öffnen den eigenen Händler, danach wieder den Umleitungs-Shop | bei `false` keine neue Zeile |
+| 12 | Leere Datei `.adds/NickelTolinoShopRedirect/uninstall`, dann **ausschalten und einschalten** (Auswerfen/Ruhemodus reicht nicht) | Plugin entfernt, `uninstall` gelöscht, Original-Verhalten | kein neues `active on Tolino` |
 
 Nicht am Gerät prüfbar, nur im Code abgesichert: Start im Kobo-Modus (`init()` verweigert, NickelHook parkt das Plugin).
 
@@ -36,3 +36,4 @@ Nicht am Gerät prüfbar, nur im Code abgesichert: Start im Kobo-Modus (`init()`
 | Version | Gerät / Firmware | Ergebnis |
 |---|---|---|
 | v2 (vor v0.1.0) | tolino shine 5, 5.18.264769 | 1–10 bestanden (2026-10-20). 11 und 12 nicht getestet. |
+| v0.1.0 (Release-Paket) | tolino shine 5, 5.18.264769 | 1–12 bestanden (2026-10-20). Deinstallation erst nach Aus- und Einschalten (siehe 12). |

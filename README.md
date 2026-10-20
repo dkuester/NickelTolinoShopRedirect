@@ -62,7 +62,12 @@ Log: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`
 
 ## Uninstall
 
-Create an empty file `.adds/NickelTolinoShopRedirect/uninstall` and restart the tolino.
+Create an empty file `.adds/NickelTolinoShopRedirect/uninstall`, eject, and **power the tolino off and on
+again** (hold the power button → "Power off"). Ejecting or sleep is not enough: the file is only checked
+when the tolino UI starts. Afterwards the file is gone and the plugin removed; `config.ini` and the log
+stay.
+
+To switch it off without uninstalling, set `enabled=false` in `config.ini` (applies without a restart).
 
 ## Build
 

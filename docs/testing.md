@@ -1,13 +1,14 @@
 # Tests
 
-## Automatisch (CI, `.forgejo/workflows/ci.yml`)
+## Automatisch (CI, `.github/workflows/ci.yml`)
 
 | Job | Was | Lokal |
 |---|---|---|
 | `logic-qt6` | Unit-Tests der reinen Logik (`hook/src/shopredirect_logic.h`): URL-Prüfung, Domain-Entscheidung „fremd/eigen“, `requestauth`-Ziel, `config.ini` lesen, alle URLs in `examples/config.ini` | `make -C test check` (Qt 6 oder Qt 5.14+ auf dem Host) |
 | `symbols` | Jeder Hook, jedes dlsym-Symbol und jeder erlaubte Aufrufer existiert in libnickel 5.18 (`test/libnickel-5.18.syms.gz`) | `python3 test/check_symbols.py` |
+| `build` | ARM-Cross-Build von `Kobo.tgz` im Qt-6-Toolchain-Image `ghcr.io/dkuester/nickelstorygraph-toolchain`, als Artefakt hochgeladen | siehe README, Abschnitt „Bauen“ |
 
-Die Hooks selbst lassen sich nur auf dem Gerät testen. Der ARM-Cross-Build läuft lokal (siehe README).
+Die Hooks selbst lassen sich nur auf dem Gerät testen. Ein Tag `v*` baut `Kobo.tgz` in der CI und veröffentlicht es mit `config.ini` und `SHA256SUMS` als Release (`.github/workflows/release.yml`).
 
 ## Manuell auf dem Gerät (vor jedem Release)
 

@@ -1,0 +1,85 @@
+name: Release
+
+# Publishes a release for every pushed v* tag: runs CI, checks that the tag
+# sits on main and has a CHANGELOG.md section, cross-builds Kobo.tgz and
+# attaches it with examples/config.ini and SHA256SUMS. The release notes are
+# the tag's CHANGELOG section; a heading marked "(Testrelease)" or a tag with
+# a "-" suffix (v1.0.0-rc1) becomes a pre-release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    container: ghcr.io/dkuester/nickelstorygraph-toolchain:latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Check tag and release notes
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $TAG is not on main."
+            exit 1
+          fi
+          # Everything between "## <tag> …" and the next "## " heading.
+          awk -v t="$TAG" '
+            index($0, "## " t " ") == 1 || $0 == "## " t { on = 1; print > "heading.txt"; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md has no section for $TAG."
+            exit 1
+          fi
+          prerelease=false
+          case "$TAG" in *-*) prerelease=true ;; esac
+          grep -q '(Testrelease)' heading.txt && prerelease=true
+          echo "PRERELEASE=$prerelease" >> "$GITHUB_ENV"
+
+      - name: Build Kobo.tgz
+        run: |
+          export VERSION="$TAG"
+          make -C hook
+          make -C hook kobo
+          mkdir dist
+          cp hook/Kobo.tgz examples/config.ini dist/
+          (cd dist && sha256sum Kobo.tgz config.ini > SHA256SUMS && cat SHA256SUMS)
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The toolchain image has no gh; use the REST API.
+          api="https://api.github.com/repos/$GITHUB_REPOSITORY"
+          auth="Authorization: Bearer $GH_TOKEN"
+          payload=$(python3 -c '
+          import json, os, sys
+          title = open("heading.txt").read().strip().lstrip("#").strip()
+          print(json.dumps({"tag_name": os.environ["TAG"], "name": title,
+                            "body": open("notes.md").read(),
+                            "prerelease": os.environ["PRERELEASE"] == "true"}))')
+          upload=$(curl -sSf -X POST -H "$auth" -H 'Accept: application/vnd.github+json' \
+            -d "$payload" "$api/releases" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["upload_url"].split("{")[0])')
+          for f in dist/*; do
+            curl -sSf -X POST -H "$auth" -H 'Content-Type: application/octet-stream' \
+              --data-binary "@$f" "$upload?name=$(basename "$f")" > /dev/null
+            echo "attached $(basename "$f")"
+          done

@@ -1,41 +1,74 @@
+<div align="center">
+
 # NickelTolinoShopRedirect
 
-[Deutsch](README.de.md)
+**Shop at any tolino reseller from your tolino, without changing the account it is signed in with.**
 
-A NickelHook plugin for **tolino** e-readers on firmware **5.18+** (Qt 6). The shop button and the
-store search open the shop of **another tolino reseller**, while the device stays signed in with its
-own reseller (e.g. Thalia), so Skoobe keeps working.
+[![Release](https://img.shields.io/github/v/release/dkuester/NickelTolinoShopRedirect?include_prereleases&label=release)](https://github.com/dkuester/NickelTolinoShopRedirect/releases)
+[![CI](https://github.com/dkuester/NickelTolinoShopRedirect/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dkuester/NickelTolinoShopRedirect/actions/workflows/ci.yml)
+[![Firmware](https://img.shields.io/badge/firmware-5.18%2B%20(Qt%206)-informational)](#compatibility)
+[![License](https://img.shields.io/github/license/dkuester/NickelTolinoShopRedirect)](LICENSE)
 
-> Tolino only. On a Kobo (or a tolino running Kobo firmware) the plugin refuses to start and does
-> nothing.
+[Installation](#installation) · [Configuration](#configuration) · [How it works](#how-it-works) · [Building](#building) · [Releases](https://github.com/dkuester/NickelTolinoShopRedirect/releases) · [Deutsch](README.de.md)
 
-## Why
+</div>
 
-The tolino server decides which resellers a device can sign in with, based on its hardware id. A
-device sold by Thalia only offers Thalia.de and buecher.de at setup. With this plugin you can still
-shop at another reseller directly on the device, e.g. **meineBUCHhandlung** (Libri). If you link both
-reseller accounts ("Konten verbinden"), the purchases show up in the library.
+The tolino server decides which resellers a device can sign in with, based on
+its hardware id. A tolino sold by Thalia only offers Thalia.de and buecher.de at
+setup. NickelTolinoShopRedirect is a [NickelHook](https://github.com/pgaskin/NickelHook)
+plugin that points the shop button and the store search to **another tolino
+reseller**, e.g. **meineBUCHhandlung** (Libri), while the device stays signed in
+with its own reseller. Sync, library and Skoobe keep working as before.
 
-The analysis behind it (German) is in [docs/analysis.md](docs/analysis.md).
+> [!NOTE]
+> **v0.1.0 is a test release.** It is tested on one device (tolino shine 5,
+> firmware 5.18.264769). Feedback from other models is very welcome.
 
-## What it does
+---
 
-- Replaces the shop's **start page** and **search URL** with the values from `config.ini`.
-- Leaves the shop's **base URL** alone. The firmware attaches your login token to requests to that
-  address, so the token never reaches the other shop.
-- Gives the other shop's pages **no access** to the firmware's `setTokens` function. Otherwise a login
-  in that shop could overwrite your device login. The on-screen keyboard keeps working.
+## Features
 
-To buy, sign in to the other shop once, like on any website. The device login does not change.
+| Feature | Description |
+|---|---|
+| **Any reseller's shop** | The shop button, the store search and "Weitere Bücher" at the end of a preview open the shop configured in `config.ini`. |
+| **Device login stays put** | The device stays signed in with its own reseller. Sync, library, Skoobe and the home screen recommendations are unchanged. |
+| **Token protection** | Pages of the other shop are loaded without your device's access token and get no access to the firmware's `setTokens` function, so they cannot read or overwrite your device login. |
+| **All resellers included** | [examples/config.ini](examples/config.ini) has ready-made entries for every tolino reseller in Germany, Austria, Switzerland, the Netherlands and Italy. |
+| **No restart for changes** | Edits to `config.ini` apply the next time the shop opens. `enabled=false` switches the plugin off without uninstalling it. |
+| **Tolino only** | On a Kobo, or a tolino running Kobo firmware, the plugin refuses to start and does nothing. |
+
+If you link both reseller accounts ("Konten verbinden"), books bought in the
+other shop show up in the library after a sync.
+
+## Compatibility
+
+| Device / firmware | Status |
+|---|---|
+| tolino shine 5, firmware 5.18.264769 | ✅ Tested on device |
+| Other tolino models, firmware 5.18+ (Qt 6) | ⚠️ Expected to work, not verified yet |
+| tolino / Kobo, firmware 4.x (Qt 5) | ❌ Not supported |
+| Kobo devices | ❌ Plugin stays inactive |
 
 ## Installation
 
-1. Download `Kobo.tgz` from the [releases](https://codeberg.org/hortizept/NickelTolinoShopRedirect/releases) or build it (see below).
-2. Connect the tolino over USB and copy `Kobo.tgz` to `.kobo/`.
+> [!TIP]
+> No NickelMenu or other mod is required.
+
+1. Download `Kobo.tgz` from the [latest release](https://github.com/dkuester/NickelTolinoShopRedirect/releases).
+2. Connect the tolino over USB and copy `Kobo.tgz` into the hidden `.kobo/` folder.
 3. Eject. The tolino installs the plugin and restarts.
 
-On first start the plugin creates `.adds/NickelTolinoShopRedirect/config.ini`, preset to
-meineBUCHhandlung.
+On first start the plugin creates `.adds/NickelTolinoShopRedirect/config.ini`,
+preset to meineBUCHhandlung. To buy, sign in to the other shop once, like on
+any website. The device login does not change.
+
+**Update:** copy the newer `Kobo.tgz` the same way.
+
+**Uninstall:** create an empty file `.adds/NickelTolinoShopRedirect/uninstall`,
+eject, and **power the tolino off and on again** (hold the power button →
+"Power off"). Ejecting or sleep is not enough: the file is only checked when the
+tolino UI starts. Afterwards the file is gone and the plugin is removed;
+`config.ini` and the log stay.
 
 ## Configuration
 
@@ -48,58 +81,101 @@ start_url=https://mt.shop-asp.de/de/
 search_url=https://mt.shop-asp.de/de/search/tolino?q=
 ```
 
-- Only `https://` URLs are accepted. An invalid or empty value keeps the reseller's original URL.
-- The search term is appended to `search_url`.
-- Changes apply the next time the shop opens; no restart needed.
-- `enabled=false` turns the plugin off without uninstalling it.
+| Key | Meaning |
+|---|---|
+| `enabled` | `false` switches the plugin off without uninstalling it. |
+| `start_url` | Start page of the shop. Only `https://` URLs are accepted; an invalid or empty value keeps the reseller's original URL. |
+| `search_url` | The search term is appended to this URL. Same rules as `start_url`. |
 
-Ready-made entries for all tolino resellers (Germany, Austria, Switzerland, Netherlands, Italy) are in
-[examples/config.ini](examples/config.ini): enable the block you want and copy the file to the tolino.
-The URLs come from the public tolino reseller config
+To switch to another reseller, enable its block in
+[examples/config.ini](examples/config.ini) and copy the file to the tolino. The
+URLs come from the public tolino reseller config
 (`https://api.pageplace.de/v1/resellers/<id>/client-types/TOLINO_SHINE_5/config`).
 
-Log: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`
+Log file: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`
 
-## Uninstall
+## How it works
 
-Create an empty file `.adds/NickelTolinoShopRedirect/uninstall`, eject, and **power the tolino off and on
-again** (hold the power button → "Power off"). Ejecting or sleep is not enough: the file is only checked
-when the tolino UI starts. Afterwards the file is gone and the plugin removed; `config.ini` and the log
-stay.
+- The plugin replaces the shop's **start page** and **search URL** with the values from `config.ini`.
+- It leaves the shop's **base URL** alone. The firmware attaches your login
+  token to requests to that address, so the token never reaches the other shop.
+- Pages of the other shop get **no access** to the firmware's `setTokens`
+  function, and `epublishing://requestauth` requests from them are dropped.
+  Otherwise a login in that shop could overwrite your device login. The
+  on-screen keyboard keeps working.
 
-To switch it off without uninstalling, set `enabled=false` in `config.ini` (applies without a restart).
+The full analysis (German) is in [docs/analysis.md](docs/analysis.md).
 
-## Build
+## Known limitations
+
+- You sign in to the other shop through its own login form, e.g. when buying.
+  The "Zur Anmeldung" link on meineBUCHhandlung's start page does nothing on
+  purpose, because it asks for a login with the device token.
+- Tested on a single model so far (tolino shine 5).
+
+## Building
 
 ```bash
-git clone --recurse-submodules https://codeberg.org/hortizept/NickelTolinoShopRedirect.git
+git clone --recurse-submodules https://github.com/dkuester/NickelTolinoShopRedirect.git
 cd NickelTolinoShopRedirect/hook
 docker run --rm -v "$PWD:$PWD" -w "$PWD" -e VERSION="$(git describe --tags --always --dirty)" \
-  strayrose/nickeltc-qt6 sh -c 'make && make kobo'
+  ghcr.io/dkuester/nickelstorygraph-toolchain sh -c 'make && make kobo'
 ```
 
-The image must contain the Qt 6.5.2 toolchain (`/tc/arm-kobo-linux-gnueabihf`), e.g. built from
-NickelStorygraph's `nickeltc-qt6` Dockerfile. An image with the Qt 5 toolchain (`arm-nickel-…`) stops
-with "Could not find the supplied Qt6 cross compiler". `VERSION` is passed in because `git describe`
-does not run inside the container.
-
 The result is `hook/Kobo.tgz` (contains `imageformats/libntshopredirect.so`).
+`VERSION` is passed in because `git describe` does not run inside the container.
 
-## Tests
+<details>
+<summary><strong>About the toolchain image</strong></summary>
 
-- Automated (CI): unit tests of the logic and a symbol check against 5.18, see [docs/testing.md](docs/testing.md).
-  Locally: `make -C test check` and `python3 test/check_symbols.py`.
-- Manual on-device checklist: [docs/testing.md](docs/testing.md).
+The image must contain the Qt 6.5.2 toolchain (`/tc/arm-kobo-linux-gnueabihf`).
+[`ghcr.io/dkuester/nickelstorygraph-toolchain`](https://github.com/dkuester/NickelStorygraph/pkgs/container/nickelstorygraph-toolchain)
+is built by NickelStorygraph's CI and is the one this project's CI uses. An image
+with the Qt 5 toolchain (`arm-nickel-…`, e.g. `strayrose/nickeltc`) stops with
+"Could not find the supplied Qt6 cross compiler".
 
-## Tested
+</details>
 
-- Statically against tolino firmware 5.18.264769 (shine 5): all hook symbols present, ABI checked.
-- On device (tolino shine 5, 5.18.264769): shop button and search open meineBUCHhandlung, buying with the
-  shop's own login works, the book shows up in the library after a sync. Thalia login, sync, Skoobe and
-  the home screen recommendations (→ Thalia) are unchanged. Foreign shop pages load without the access
-  token (log). "Weitere Bücher" at the end of a preview opens meineBUCHhandlung too. The shop login
-  survives a restart.
+### Tests
+
+| Level | How |
+|---|---|
+| Logic unit tests (Qt 6) | `make -C test check`, also checks every URL in `examples/config.ini` |
+| Symbol check against firmware 5.18 | `python3 test/check_symbols.py` |
+| Cross build | CI builds `Kobo.tgz` on every push to `main` and every pull request |
+| On device | Manual checklist in [docs/testing.md](docs/testing.md) |
+
+Every `v*` tag builds `Kobo.tgz` in CI and publishes it as a release.
+Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+## Support
+
+| | |
+|---|---|
+| Bug reports and questions | [Issues](https://github.com/dkuester/NickelTolinoShopRedirect/issues). Please include device model, firmware version (`.kobo/version`), plugin version and the log file. |
+| Downloads and changelog | [Releases](https://github.com/dkuester/NickelTolinoShopRedirect/releases) · [CHANGELOG.md](CHANGELOG.md) |
+| Earlier history | Pull requests up to v0.1.0 are in the [archived Codeberg repository](https://codeberg.org/hortizept/NickelTolinoShopRedirect). |
+| Contributing | Pull requests against `main`; CI must pass. |
+
+> [!WARNING]
+> This plugin changes the behaviour of your e-reader's software. It is not
+> affiliated with the tolino alliance, Thalia, Libri or any other reseller. Use
+> it at your own risk.
+
+## Acknowledgements
+
+- **[NickelHook](https://github.com/pgaskin/NickelHook)** (MIT, Patrick Gaskin),
+  used in the `qt6-support` fork by **Nico Verbruggen**
+  ([nicoverbruggen/NickelHook](https://github.com/nicoverbruggen/NickelHook)).
+- **[NickelStorygraph](https://github.com/dkuester/NickelStorygraph)**: the Qt 6
+  toolchain image.
+
+## AI assistance
+
+This plugin was analysed and built with the help of AI assistants (Claude Code,
+Anthropic). Technical review, on-device testing and sign-off were done by a
+human.
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Uses [NickelHook](https://github.com/nicoverbruggen/NickelHook) (branch `qt6-support`).
+[MIT](LICENSE)

@@ -16,13 +16,14 @@
 Bei welchem Händler sich ein tolino anmelden kann, legt der tolino-Server
 anhand der Hardware-ID fest. Ein Gerät von Thalia bietet beim Einrichten nur
 Thalia.de und buecher.de an. NickelTolinoShopRedirect ist ein
-[NickelHook](https://github.com/pgaskin/NickelHook)-Plugin, das den Shop-Knopf
-und die Shop-Suche auf einen **anderen tolino-Händler** umleitet, z. B.
-**meineBUCHhandlung** (Libri). Das Gerät bleibt dabei bei seinem eigenen
-Händler angemeldet; Sync, Bibliothek und Skoobe funktionieren wie bisher.
+[NickelHook](https://github.com/pgaskin/NickelHook)-Plugin, das den Shop-Knopf,
+die Shop-Suche und die Empfehlungen auf dem Startbildschirm auf einen
+**anderen tolino-Händler** umleitet, z. B. **meineBUCHhandlung** (Libri).
+Das Gerät bleibt dabei bei seinem eigenen Händler angemeldet; Sync,
+Bibliothek und Skoobe funktionieren wie bisher.
 
 > [!NOTE]
-> **v0.1.0 ist ein Testrelease.** Getestet ist es auf einem Gerät (tolino
+> **v0.2.0 ist ein Testrelease.** Getestet ist es auf einem Gerät (tolino
 > shine 5, Firmware 5.18.264769). Rückmeldungen zu anderen Modellen sind sehr
 > willkommen.
 

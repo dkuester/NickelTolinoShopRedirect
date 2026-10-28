@@ -16,12 +16,13 @@
 The tolino server decides which resellers a device can sign in with, based on
 its hardware id. A tolino sold by Thalia only offers Thalia.de and buecher.de at
 setup. NickelTolinoShopRedirect is a [NickelHook](https://github.com/pgaskin/NickelHook)
-plugin that points the shop button and the store search to **another tolino
-reseller**, e.g. **meineBUCHhandlung** (Libri), while the device stays signed in
-with its own reseller. Sync, library and Skoobe keep working as before.
+plugin that points the shop button, the store search and the home screen
+recommendations to **another tolino reseller**, e.g. **meineBUCHhandlung**
+(Libri), while the device stays signed in with its own reseller. Sync, library
+and Skoobe keep working as before.
 
 > [!NOTE]
-> **v0.1.0 is a test release.** It is tested on one device (tolino shine 5,
+> **v0.2.0 is a test release.** It is tested on one device (tolino shine 5,
 > firmware 5.18.264769). Feedback from other models is very welcome.
 
 ---

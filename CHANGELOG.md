@@ -1,6 +1,8 @@
 # Changelog
 
-## Unveröffentlicht
+## v0.2.0 – 2026-10-28 (Testrelease)
+
+Getestet: tolino shine 5, 5.18.264769.
 
 - Empfehlungs-Kacheln auf dem Startbildschirm suchen das Buch im Shop aus `config.ini`: `search_url`
   mit der EAN aus der Kennung der Empfehlung, ohne EAN mit Titel und Autor. Neuer Schalter

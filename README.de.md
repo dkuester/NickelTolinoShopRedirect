@@ -33,7 +33,8 @@ Händler angemeldet; Sync, Bibliothek und Skoobe funktionieren wie bisher.
 | Funktion | Beschreibung |
 |---|---|
 | **Shop eines beliebigen Händlers** | Shop-Knopf, Shop-Suche und „Weitere Bücher“ am Ende einer Leseprobe öffnen den Shop aus `config.ini`. |
-| **Geräte-Login bleibt** | Das Gerät bleibt beim eigenen Händler angemeldet. Sync, Bibliothek, Skoobe und die Empfehlungen auf dem Startbildschirm bleiben unverändert. |
+| **Empfehlungen im eigenen Shop** | Eine Empfehlungs-Kachel auf dem Startbildschirm sucht das Buch über seine EAN im Shop aus `config.ini` (ohne EAN über Titel und Autor). |
+| **Geräte-Login bleibt** | Das Gerät bleibt beim eigenen Händler angemeldet. Sync, Bibliothek und Skoobe bleiben unverändert. |
 | **Schutz des Tokens** | Seiten des fremden Shops werden ohne das Access-Token des Geräts geladen und erhalten keinen Zugriff auf die Firmware-Funktion `setTokens`. Sie können den Geräte-Login also weder lesen noch überschreiben. |
 | **Alle Händler dabei** | [examples/config.ini](examples/config.ini) enthält fertige Einträge für alle tolino-Händler in Deutschland, Österreich, der Schweiz, den Niederlanden und Italien. |
 | **Änderungen ohne Neustart** | Änderungen an `config.ini` gelten beim nächsten Öffnen des Shops. `enabled=false` schaltet das Plugin ab, ohne es zu deinstallieren. |
@@ -82,6 +83,7 @@ Datei weg und das Plugin entfernt; `config.ini` und das Log bleiben.
 enabled=true
 start_url=https://mt.shop-asp.de/de/
 search_url=https://mt.shop-asp.de/de/search/tolino?q=
+recommendations=true
 ```
 
 | Schlüssel | Bedeutung |
@@ -89,6 +91,7 @@ search_url=https://mt.shop-asp.de/de/search/tolino?q=
 | `enabled` | `false` schaltet das Plugin ab, ohne es zu deinstallieren. |
 | `start_url` | Startseite des Shops. Nur `https://`-URLs werden akzeptiert; ein ungültiger oder leerer Wert behält die Original-URL des Händlers. |
 | `search_url` | An diese URL wird der Suchbegriff angehängt. Gleiche Regeln wie bei `start_url`. |
+| `recommendations` | `true` (Voreinstellung, auch wenn der Eintrag fehlt): Eine angetippte Empfehlungs-Kachel öffnet `search_url` mit der EAN des Buchs. `false`: Artikelseite des eigenen Händlers. |
 
 Für einen anderen Händler dessen Block in [examples/config.ini](examples/config.ini)
 aktivieren und die Datei auf den tolino kopieren. Die URLs stammen aus der
@@ -100,6 +103,9 @@ Logdatei: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`
 ## Funktionsweise
 
 - Das Plugin ersetzt die **Startseite** und die **Such-URL** des Shops durch die Werte aus `config.ini`.
+- Eine angetippte **Empfehlungs-Kachel** öffnet die Such-URL mit der EAN des
+  Buchs aus der Kennung der Empfehlung. Die Empfehlungen selbst kommen weiter
+  vom eigenen Händler; Sync und gespeicherte Empfehlungen bleiben unverändert.
 - Die **Basis-URL** des Shops bleibt unverändert. An diese Adresse hängt die
   Firmware dein Login-Token an, deshalb gelangt es nie zum fremden Shop.
 - Seiten des fremden Shops erhalten **keinen Zugriff** auf die
@@ -114,6 +120,10 @@ Die vollständige Analyse steht in [docs/analysis.md](docs/analysis.md).
 - Die Anmeldung im fremden Shop läuft über dessen eigenes Formular, z. B. beim
   Kauf. Der Link „Zur Anmeldung“ auf der Startseite von meineBUCHhandlung tut
   absichtlich nichts, weil er eine Anmeldung mit dem Geräte-Token verlangt.
+- Nur die Kacheln auf dem Startbildschirm öffnen den Shop aus `config.ini`.
+  Die Liste hinter „Alle anschauen“ und die Empfehlungen am Ende eines Buchs
+  öffnen weiter die Artikelseite des eigenen Händlers.
+- Führt der fremde Shop ein empfohlenes Buch nicht, bleibt die Suche leer.
 - Bisher nur auf einem Modell getestet (tolino shine 5).
 
 ## Bauen

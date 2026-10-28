@@ -19,7 +19,16 @@
  *      screen recommendations build links to the reseller's article pages
  *      from the start URL. getResellerShopBaseUrl() is never touched.
  *
- *   2. The device's access token must not reach a foreign shop. The firmware
+ *   2. A tapped home screen recommendation tile opens the configured search
+ *      URL with the book's EAN (from its publicationId; title and author if
+ *      there is none) instead of the reseller's article page:
+ *      TolinoRecommendation::retrieveShopUrl(), only when called from
+ *      HomeRecommendationsWidget::bookTapped(). Its other callers (sync, the
+ *      home screen, "show all", end of book) keep the reseller's URL, and
+ *      nothing stored changes. The search URL is a redirect host, so the
+ *      guards below apply to the shop view it opens.
+ *
+ *   3. The device's access token must not reach a foreign shop. The firmware
  *      sends it in three ways, each guarded here:
  *        - ResellerRequestInterceptor: X-Access-Token on requests to the base
  *          URL's host only. Unchanged, the base URL stays the reseller's.
@@ -30,13 +39,13 @@
  *        - epublishing://requestauth?targeturl=…: refreshes the token and
  *          opens targeturl with it. Dropped when targeturl is foreign.
  *
- *   3. The shop view exposes a JS bridge (ResellerJsInterface, registered as
+ *   4. The shop view exposes a JS bridge (ResellerJsInterface, registered as
  *      "screenController" on a web channel in the main world) whose setTokens()
  *      slot overwrites the device's access and refresh token. For shop views
  *      opened on a redirect host, that object is not registered; the keyboard
  *      bridge stays.
  *
- *   4. Tolino only: init() refuses to run unless Device::isTolino() is true.
+ *   5. Tolino only: init() refuses to run unless Device::isTolino() is true.
  *      NickelHook then restores every hook and parks the plugin, so on a Kobo
  *      (or a Tolino converted to Kobo firmware) nothing changes.
  *
@@ -51,6 +60,7 @@
 #include <NickelHook.h>
 
 #include <dlfcn.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <QDateTime>
@@ -69,6 +79,7 @@ using shopredirect::Config;
 
 typedef void Device;
 typedef void TolinoServiceSettings;
+typedef void TolinoRecommendation;
 typedef void ResellerShopController;
 typedef void EpublishingNetworkAccessManager;
 typedef void QWebChannel;
@@ -94,12 +105,17 @@ static const char *const kSearchUrlCallers[] = {
     "_ZN24TolinoStoreSearchBuilder15buildControllerERK7QString", // store search
     nullptr,
 };
+static const char *const kRecoUrlCallers[] = {
+    "_ZN25HomeRecommendationsWidget10bookTappedERK7QString", // home screen tile
+    nullptr,
+};
 
 // Originals, filled by NickelHook (.out).
 // QString is returned through a hidden pointer (r0), `this` follows in r1;
 // declaring the return type as QString gives exactly that ABI.
 static QString (*TolinoServiceSettings__getResellerShopStartUrl)(TolinoServiceSettings *);
 static QString (*TolinoServiceSettings__getResellerShopSearchUrl)(TolinoServiceSettings *);
+static QString (*TolinoRecommendation__retrieveShopUrl)(TolinoRecommendation *);
 // Static in 5.18 (reads the account directly, ignores r1): r0 = result only.
 static QString (*TolinoServiceSettings__getAccessToken)();
 // QString/QUrl passed by value arrive as a pointer to the caller's copy.
@@ -113,6 +129,11 @@ static Device *(*Device__getCurrentDevice)();  // returns Device& (r0)
 static bool (*Device__isTolino)(const Device *);
 static TolinoServiceSettings *(*TolinoServiceSettings__sharedInstance)();
 static QString (*TolinoServiceSettings__getResellerShopBaseUrl)(TolinoServiceSettings *);
+static QString (*TolinoRecommendation__getPublicationId)(const TolinoRecommendation *);
+static QString (*TolinoRecommendation__getTitle)(const TolinoRecommendation *);
+static QString (*TolinoRecommendation__getAuthor)(const TolinoRecommendation *);
+// Only its address: a cheap first test of retrieveShopUrl()'s caller.
+static void *HomeRecommendationsWidget__bookTapped;
 
 // Set at the end of a successful init(); every hook passes through until then.
 static bool g_active = false;
@@ -150,6 +171,7 @@ static void write_default_config()
     s.setValue(QStringLiteral("shop/enabled"), true);
     s.setValue(QStringLiteral("shop/start_url"), QString::fromLatin1(kDefaultStartUrl));
     s.setValue(QStringLiteral("shop/search_url"), QString::fromLatin1(kDefaultSearchUrl));
+    s.setValue(QStringLiteral("shop/recommendations"), true);
     s.sync();
 }
 
@@ -160,6 +182,14 @@ static Config read_config()
 }
 
 using shopredirect::host_of;
+
+// Whether ret may lie in bookTapped(). retrieveShopUrl() also runs at every
+// sync and home screen refresh; this keeps dladdr() off those calls.
+static bool near_book_tapped(void *ret)
+{
+    const uintptr_t start = reinterpret_cast<uintptr_t>(HomeRecommendationsWidget__bookTapped);
+    return start && reinterpret_cast<uintptr_t>(ret) - start < 0x10000;
+}
 
 static bool caller_allowed(void *ret, const char *const *callers)
 {
@@ -218,6 +248,23 @@ _nh_TolinoServiceSettings__getResellerShopSearchUrl(TolinoServiceSettings *self)
         }
     }
     return TolinoServiceSettings__getResellerShopSearchUrl(self);
+}
+
+extern "C" __attribute__((visibility("default"))) QString
+_nh_TolinoRecommendation__retrieveShopUrl(TolinoRecommendation *self)
+{
+    void *ret = __builtin_return_address(0);
+    if (g_active && near_book_tapped(ret) && caller_allowed(ret, kRecoUrlCallers)) {
+        const QString term = shopredirect::reco_search_term(TolinoRecommendation__getPublicationId(self),
+                                                            TolinoRecommendation__getTitle(self),
+                                                            TolinoRecommendation__getAuthor(self));
+        const QString url = shopredirect::reco_search_url(read_config(), term);
+        if (!url.isEmpty()) {
+            log_line(QStringLiteral("recommendation url -> ") + url);
+            return url;
+        }
+    }
+    return TolinoRecommendation__retrieveShopUrl(self);
 }
 
 extern "C" __attribute__((visibility("default"))) QString
@@ -297,10 +344,11 @@ static int shopredirect_init()
     }
 
     const Config c = read_config();
-    log_line(QStringLiteral("active on Tolino; enabled=%1 start_url=%2 search_url=%3")
+    log_line(QStringLiteral("active on Tolino; enabled=%1 start_url=%2 search_url=%3 recommendations=%4")
                  .arg(c.enabled ? QStringLiteral("true") : QStringLiteral("false"),
                       c.start_url.isEmpty() ? QStringLiteral("(stock)") : c.start_url,
-                      c.search_url.isEmpty() ? QStringLiteral("(stock)") : c.search_url));
+                      c.search_url.isEmpty() ? QStringLiteral("(stock)") : c.search_url,
+                      c.recommendations ? QStringLiteral("true") : QStringLiteral("false")));
     g_active = true;
     return 0;
 }
@@ -327,6 +375,13 @@ static struct nh_hook NickelTolinoShopRedirectHook[] = {
         .lib     = "libnickel.so.1.0.0",
         .out     = nh_symoutptr(TolinoServiceSettings__getResellerShopSearchUrl),
         .desc    = "Store search uses the configured shop",
+    },
+    {
+        .sym     = "_ZN20TolinoRecommendation15retrieveShopUrlEv",
+        .sym_new = "_nh_TolinoRecommendation__retrieveShopUrl",
+        .lib     = "libnickel.so.1.0.0",
+        .out     = nh_symoutptr(TolinoRecommendation__retrieveShopUrl),
+        .desc    = "Recommendation tiles search the configured shop",
     },
     {
         .sym     = "_ZN21TolinoServiceSettings14getAccessTokenEv",
@@ -386,6 +441,26 @@ static struct nh_dlsym NickelTolinoShopRedirectDlsym[] = {
         .name = "_ZN21TolinoServiceSettings22getResellerShopBaseUrlEv",
         .out  = nh_symoutptr(TolinoServiceSettings__getResellerShopBaseUrl),
         .desc = "Reseller's own shop domain",
+    },
+    {
+        .name = "_ZNK20TolinoRecommendation16getPublicationIdEv",
+        .out  = nh_symoutptr(TolinoRecommendation__getPublicationId),
+        .desc = "Recommendation tile search term",
+    },
+    {
+        .name = "_ZNK20TolinoRecommendation8getTitleEv",
+        .out  = nh_symoutptr(TolinoRecommendation__getTitle),
+        .desc = "Recommendation tile search term",
+    },
+    {
+        .name = "_ZNK20TolinoRecommendation9getAuthorEv",
+        .out  = nh_symoutptr(TolinoRecommendation__getAuthor),
+        .desc = "Recommendation tile search term",
+    },
+    {
+        .name = "_ZN25HomeRecommendationsWidget10bookTappedERK7QString",
+        .out  = nh_symoutptr(HomeRecommendationsWidget__bookTapped),
+        .desc = "Recommendation tile caller check",
     },
     {0},
 };

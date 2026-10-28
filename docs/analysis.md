@@ -127,6 +127,7 @@ Plugin registriert deshalb für Shop-Ansichten auf einem Umleitungs-Host das `Re
 |---|---|
 | `TolinoServiceSettings::getResellerShopStartUrl()` | Startseite aus `config.ini`, nur für Shop-Knopf, `goShopping` und „Mehr stöbern“ (Aufrufer per `dladdr` geprüft) |
 | `TolinoServiceSettings::getResellerShopSearchUrl()` | Such-URL aus `config.ini`, nur für `TolinoStoreSearchBuilder` |
+| `TolinoRecommendation::retrieveShopUrl()` | Empfehlungs-Kachel: Such-URL mit der EAN, nur für `HomeRecommendationsWidget::bookTapped` (3.4) |
 | `TolinoServiceSettings::getAccessToken()` | liefert leer, solange eine fremde Seite geladen wird (thread-lokal) |
 | `ResellerShopController::ResellerShopController(QString, bool, QObject*)` | erkennt Shop-Ansichten auf einem Umleitungs-Host |
 | `ResellerShopController::goToTargetUrl(QString)` | lädt fremde Seiten ohne `X-Access-Token` |
@@ -156,6 +157,41 @@ nicht möglich, weil die Firmware `Kobo.tgz` selbst entpackt. Das Plugin bleibt 
   Shop für Tolino-Geräte einen Link `epublishing://requestauth?targeturl=https://<shop>/wsapi/rest/v1/authentication/byaccesstokenwithredirect?url=…`.
   Gedacht ist eine Anmeldung per Geräte-Token. Mit dem Thalia-Token kann das nicht klappen. v2 verwirft
   diesen Aufruf. Die Anmeldung läuft stattdessen über den normalen Login des Shops, z. B. beim Kauf.
+
+### 3.4 Empfehlungs-Kacheln im Umleitungs-Shop
+
+**Codepfad (5.18 und 6.0 gleich).** `HomeRecommendationsWidget::bookTapped(publicationId)` sucht die
+Empfehlung, ruft über die PLT `TolinoRecommendation::retrieveShopUrl()` auf und öffnet das Ergebnis mit
+`new ResellerShopController(url, true, nullptr)`. `retrieveShopUrl()` hängt das Feld `shop_url` an
+`getResellerShopBaseUrl()` und gibt das an `buildUrlShopRecommendation()`. Dieses nimmt Schema und Host
+der Start-URL, übernimmt deren Query-Parameter (Tracking wie `einsprung`) und hängt den Artikelpfad an.
+Deshalb lieferte v1 mit umgebogener Start-URL kaputte Links.
+
+Weitere Aufrufer von `retrieveShopUrl()`: `convertToRecoVolume()`, aufgerufen vom Sync
+(`SyncTolinoRecommendationsCommand::syncHomeRecommendations`, Volumes für die Cover), von
+`HomeRecommendationsWidget::setBooks`, `TolinoRecommendationsProvider::contents` und
+`NextReadDataProvider::getTolinoRecommendations`. Die fertige URL wird nur im `Volume` gehalten, in der
+Datenbank steht das rohe Segment. Die Liste „Alle anschauen“ (`TolinoRecommendationsView::onVolumeSelected`)
+und die Empfehlungen am Buchende (`RelatedReadingWidget::bookCoverTapped`) lesen die URL aus diesem Volume.
+
+**Buchdaten.** `tolino_recommendations` hat keine ISBN-Spalte (publicationId, author, cover_url,
+description, publicationType, shop_url, title, context, recosJson). Auf dem Gerät (Thalia) enthält die
+`publicationId` aber die EAN: `DT0244.9783843737241` (Startseite), `DT0400.9783257608267_A30250671`
+(Shop), selten keine (`DT0402.1S2vjR6…`). Titel sind nach 40 Zeichen abgeschnitten, der Autor steht als
+„Nachname, Vorname“. Die Shop-Suche von meineBUCHhandlung findet über die EAN genau das Buch (am Gerät
+geprüft mit 9783843737241).
+
+**Umsetzung.** Ein Hook auf `retrieveShopUrl()` liefert für den Aufrufer `bookTapped` `search_url` +
+EAN (mit Prüfziffer; ohne EAN Titel und Autor, sonst die Original-URL). Alle anderen Aufrufer laufen
+unverändert durch: ein Adressvergleich mit `bookTapped` (per `dlsym`) sortiert sie aus, bevor `dladdr`
+oder `config.ini` gelesen werden. Sync und gespeicherte Daten bleiben damit unberührt. Die neue URL
+liegt auf dem Such-Host, also einem Umleitungs-Host: Der Konstruktor-Hook markiert die Ansicht als fremd,
+`goToTargetUrl` lädt ohne Token, `ResellerJsInterface` wird nicht registriert und `requestauth` verworfen.
+Thalias Tracking-Parameter gehen nicht an den fremden Shop, weil die Thalia-URL gar nicht gebaut wird.
+Der fremde Shop erfährt nur die EAN der Empfehlung.
+
+**Nicht abgedeckt.** „Alle anschauen“ und die Empfehlungen am Buchende (siehe oben). Sie zu erfassen
+hieße, `convertToRecoVolume()` je nach Aufrufer umzuleiten, und das läuft auch im Sync.
 
 ## 4. Offene Punkte
 

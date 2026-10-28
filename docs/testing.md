@@ -21,8 +21,9 @@ Log: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`.
 | 2 | Shop-Knopf | Umleitungs-Shop öffnet sich | `shop start url ->`, `foreign shop view:`, `skipped web channel object 'screenController'`, `loading foreign page without access token` |
 | 3 | Shop-Suche | Treffer im Umleitungs-Shop | `shop search url ->` |
 | 4 | „Weitere Bücher“ am Ende einer Leseprobe | Umleitungs-Shop | `shop start url ->` |
-| 5 | Empfehlungs-Kachel auf dem Startbildschirm | Shop des eigenen Händlers | kein `shop start url` |
-| 6 | Shop des eigenen Händlers (über eine Empfehlung) | weiter angemeldet | keine `foreign`-Zeile |
+| 5 | Empfehlungs-Kachel auf dem Startbildschirm | Suche im Umleitungs-Shop, Treffer ist das Buch der Kachel | `recommendation url -> …?q=<EAN>`, `foreign shop view:`, `skipped web channel object 'screenController'`, `loading foreign page without access token` |
+| 6 | Eintrag aus „Alle anschauen“ unter den Empfehlungen | Artikelseite des eigenen Händlers, weiter angemeldet | keine `recommendation url`- und keine `foreign`-Zeile |
+| 6a | `recommendations=false` in `config.ini`, ohne Neustart; Empfehlungs-Kachel | Artikelseite des eigenen Händlers | keine `recommendation url`-Zeile |
 | 7 | Im Umleitungs-Shop anmelden (z. B. beim Kauf), Tastatur | Login-Formular, Tastatur erscheint | – |
 | 8 | Kauf oder Leseprobe im Umleitungs-Shop, dann Sync | Buch erscheint in der Bibliothek (Konten verbunden) | – |
 | 9 | Sync, Bibliothek, Skoobe | unverändert | – |
@@ -38,3 +39,4 @@ Nicht am Gerät prüfbar, nur im Code abgesichert: Start im Kobo-Modus (`init()`
 |---|---|---|
 | v2 (vor v0.1.0) | tolino shine 5, 5.18.264769 | 1–10 bestanden (2026-10-20). 11 und 12 nicht getestet. |
 | v0.1.0 (Release-Paket) | tolino shine 5, 5.18.264769 | 1–12 bestanden (2026-10-20). Deinstallation erst nach Aus- und Einschalten (siehe 12). |
+| Empfehlungs-Kacheln (Branch `feat/reco-tiles`) | Nickel-VM: Kobo-Firmware 6.0.279225 im Tolino-Modus unter qemu-user, Thalia-Konfiguration und Empfehlungen von Hand eingespielt, ohne Konto | 5, 6, 6a bestanden (2026-10-28); Hooks und Symbole in 6.0 vorhanden. Der Shop zeigt ohne Buchhandlungs-Sitzung nur „Zur Anmeldung“; der Treffer selbst ist damit nur am Gerät prüfbar. Gerätetest steht aus. |

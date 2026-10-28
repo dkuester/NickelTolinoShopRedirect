@@ -31,7 +31,8 @@ with its own reseller. Sync, library and Skoobe keep working as before.
 | Feature | Description |
 |---|---|
 | **Any reseller's shop** | The shop button, the store search and "Weitere Bücher" at the end of a preview open the shop configured in `config.ini`. |
-| **Device login stays put** | The device stays signed in with its own reseller. Sync, library, Skoobe and the home screen recommendations are unchanged. |
+| **Recommendations in your shop** | A home screen recommendation tile searches the configured shop for the book's EAN (title and author if there is none). |
+| **Device login stays put** | The device stays signed in with its own reseller. Sync, library and Skoobe are unchanged. |
 | **Token protection** | Pages of the other shop are loaded without your device's access token and get no access to the firmware's `setTokens` function, so they cannot read or overwrite your device login. |
 | **All resellers included** | [examples/config.ini](examples/config.ini) has ready-made entries for every tolino reseller in Germany, Austria, Switzerland, the Netherlands and Italy. |
 | **No restart for changes** | Edits to `config.ini` apply the next time the shop opens. `enabled=false` switches the plugin off without uninstalling it. |
@@ -79,6 +80,7 @@ tolino UI starts. Afterwards the file is gone and the plugin is removed;
 enabled=true
 start_url=https://mt.shop-asp.de/de/
 search_url=https://mt.shop-asp.de/de/search/tolino?q=
+recommendations=true
 ```
 
 | Key | Meaning |
@@ -86,6 +88,7 @@ search_url=https://mt.shop-asp.de/de/search/tolino?q=
 | `enabled` | `false` switches the plugin off without uninstalling it. |
 | `start_url` | Start page of the shop. Only `https://` URLs are accepted; an invalid or empty value keeps the reseller's original URL. |
 | `search_url` | The search term is appended to this URL. Same rules as `start_url`. |
+| `recommendations` | `true` (default, also when missing): a tapped home screen recommendation tile opens `search_url` with the book's EAN. `false`: the reseller's article page. |
 
 To switch to another reseller, enable its block in
 [examples/config.ini](examples/config.ini) and copy the file to the tolino. The
@@ -97,6 +100,9 @@ Log file: `.adds/NickelTolinoShopRedirect/NickelTolinoShopRedirect.log`
 ## How it works
 
 - The plugin replaces the shop's **start page** and **search URL** with the values from `config.ini`.
+- A tapped **recommendation tile** opens the search URL with the book's EAN,
+  taken from the recommendation's id. The recommendations themselves still come
+  from the device's reseller; sync and the stored recommendations are untouched.
 - It leaves the shop's **base URL** alone. The firmware attaches your login
   token to requests to that address, so the token never reaches the other shop.
 - Pages of the other shop get **no access** to the firmware's `setTokens`
@@ -111,6 +117,10 @@ The full analysis (German) is in [docs/analysis.md](docs/analysis.md).
 - You sign in to the other shop through its own login form, e.g. when buying.
   The "Zur Anmeldung" link on meineBUCHhandlung's start page does nothing on
   purpose, because it asks for a login with the device token.
+- Only the tiles on the home screen open the configured shop. The list behind
+  "Alle anschauen" and the recommendations at the end of a book still open the
+  reseller's article page.
+- A recommendation the configured shop does not sell ends in an empty search.
 - Tested on a single model so far (tolino shine 5).
 
 ## Building

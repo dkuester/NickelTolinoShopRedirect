@@ -163,6 +163,51 @@ static void test_auth_request_target()
     CHECK(auth_request_target(QUrl(QStringLiteral("epublishing://requestauth"))).isEmpty());
 }
 
+// Recommendation tiles: publicationIds as stored on a Thalia device (5.18).
+static void test_reco()
+{
+    CHECK(valid_ean13("9783843737241"));
+    CHECK(!valid_ean13("9783843737242"));   // wrong check digit
+    CHECK(!valid_ean13("978384373724"));    // 12 digits
+    CHECK(!valid_ean13("978384373724x"));
+
+    CHECK_EQ(ean_from_publication_id("DT0244.9783843737241"), "9783843737241");
+    CHECK_EQ(ean_from_publication_id("DT0400.9783257608267_A30250671"), "9783257608267");
+    CHECK_EQ(ean_from_publication_id("9781473223554"), "9781473223554");
+    CHECK(ean_from_publication_id("DT0402.1S2vjR6PDopuCcIjcnjqfo").isEmpty());
+    CHECK(ean_from_publication_id("DT0244.9783843737242").isEmpty());   // check digit
+    CHECK(ean_from_publication_id("DT0244.97838437372411").isEmpty());  // 14 digits
+    CHECK(ean_from_publication_id("DT0244.4006381333931").isEmpty());   // EAN, not a book
+    CHECK(ean_from_publication_id("").isEmpty());
+
+    CHECK_EQ(reco_search_term("DT0244.9783641335250", "Der kalte Glanz des Todes", "Robb, J. D."), "9783641335250");
+    CHECK_EQ(reco_search_term("DT0402.1S2vjR6PDopuCcIjcnjqfo", "Star Trek: Der Entropie-Effekt", "Vonda N. McIntyre"),
+             "Star Trek: Der Entropie-Effekt Vonda N. McIntyre");
+    CHECK_EQ(reco_search_term("x", " Die  Tiefe ", "Sander, Karen"), "Die Tiefe Sander Karen");
+    CHECK_EQ(reco_search_term("x", "Paradise Lost", ""), "Paradise Lost");
+    CHECK(reco_search_term("x", "", "Nesbø, Jo").isEmpty());   // an author alone finds anything
+    CHECK(reco_search_term("", "", "").isEmpty());
+
+    const Config c = mbh();
+    CHECK_EQ(reco_search_url(c, "9783843737241"), "https://mt.shop-asp.de/de/search/tolino?q=9783843737241");
+    CHECK_EQ(reco_search_url(c, "Die Tiefe Sander Karen"),
+             "https://mt.shop-asp.de/de/search/tolino?q=Die%20Tiefe%20Sander%20Karen");
+    CHECK_EQ(reco_search_url(c, "Nesbø & Co"), "https://mt.shop-asp.de/de/search/tolino?q=Nesb%C3%B8%20%26%20Co");
+    // The tile opens on the search host, a redirect host: the token guards apply.
+    CHECK(is_foreign_shop_view(host_of(reco_search_url(c, "9783843737241")), kThalia, c));
+    CHECK(reco_search_url(c, "").isEmpty());
+
+    Config off = c;
+    off.recommendations = false;
+    CHECK(reco_search_url(off, "9783843737241").isEmpty());
+    off = c;
+    off.enabled = false;
+    CHECK(reco_search_url(off, "9783843737241").isEmpty());
+    off = c;
+    off.search_url.clear();
+    CHECK(reco_search_url(off, "9783843737241").isEmpty());
+}
+
 static void write_file(const QString &path, const QString &text)
 {
     QFile f(path);
@@ -186,6 +231,7 @@ static void test_read_config(const QString &tmp)
     CHECK(w.enabled);
     CHECK_EQ(w.start_url, mbh().start_url);
     CHECK_EQ(w.search_url, mbh().search_url);
+    CHECK(w.recommendations);   // missing key (config.ini of v0.1.0): on
 
     // Hand-written values: http rejected, missing enabled means off.
     const QString hand = tmp + "/hand.ini";
@@ -194,6 +240,10 @@ static void test_read_config(const QString &tmp)
     CHECK(!h.enabled);
     CHECK(h.start_url.isEmpty());
     CHECK_EQ(h.search_url, "https://mt.shop-asp.de/de/search/tolino?q=");
+
+    const QString recos = tmp + "/recos.ini";
+    write_file(recos, "[shop]\nenabled=true\nrecommendations=false\n");
+    CHECK(!read_config(recos).recommendations);
 }
 
 // Every start_url/search_url in examples/config.ini, active or commented out,
@@ -204,6 +254,7 @@ static void test_example_config(const QString &example, const QString &tmp)
     CHECK(active.enabled);
     CHECK_EQ(active.start_url, mbh().start_url);
     CHECK_EQ(active.search_url, mbh().search_url);
+    CHECK(active.recommendations);
 
     QFile f(example);
     CHECK(f.open(QIODevice::ReadOnly | QIODevice::Text));
@@ -242,6 +293,7 @@ int main(int argc, char **argv)
     test_foreign_shop_view();
     test_foreign_host();
     test_auth_request_target();
+    test_reco();
     test_read_config(tmp.path());
     test_example_config(example, tmp.path());
 

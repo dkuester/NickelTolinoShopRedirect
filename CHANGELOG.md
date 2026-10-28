@@ -1,5 +1,13 @@
 # Changelog
 
+## Unveröffentlicht
+
+- Empfehlungs-Kacheln auf dem Startbildschirm suchen das Buch im Shop aus `config.ini`: `search_url`
+  mit der EAN aus der Kennung der Empfehlung, ohne EAN mit Titel und Autor. Neuer Schalter
+  `recommendations` (Voreinstellung `true`, auch bei fehlendem Eintrag). Die Liste „Alle anschauen“
+  und die Empfehlungen am Buchende öffnen weiter den eigenen Händler. Sync und gespeicherte
+  Empfehlungen bleiben unverändert; die bestehenden Token-Schutzmechanismen greifen auch hier.
+
 ## v0.1.0 – 2026-10-20 (Testrelease)
 
 Erste Version für tolino-eReader mit Firmware 5.18 (getestet: tolino shine 5, 5.18.264769).
